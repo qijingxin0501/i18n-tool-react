@@ -1,0 +1,21 @@
+{
+  "name": "i18n-tool-react",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Qjx",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/parser": "^7.29.2",
+    "@babel/traverse": "^7.29.0",
+    "chalk": "^4.1.2",
+    "express": "^5.2.1",
+    "glob": "^13.0.6",
+    "magic-string": "^0.30.21",
+    "open": "^11.0.0"
+  }
+}
