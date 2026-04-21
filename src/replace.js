@@ -28,8 +28,21 @@ function buildTranslateCall(key, defaultText, funcName, templateExpressions) {
 }
 
 /**
- * 处理模板表达式中的中文字符串，将它们替换为翻译函数调用
- * 例如：getHiHisTextConfig("idEmp121_2", "首席医生") → getHiHisTextConfig("idEmp121_2", intl({ key: '...', defaultText: '首席医生' }))
+ * 处理模板表达式中残留的中文，将它们替换为翻译函数调用
+ *
+ * 支持两种场景：
+ *
+ * 场景一：嵌套模板字符串
+ *   表达式源码: num ? `${num}条已缴费` : ""
+ *   映射条目:   { text: "${0}条已缴费", templateExpressions: ["num"], key: "header.bbb" }
+ *   → 还原源码: `${num}条已缴费`
+ *   → 替换结果: num ? intl({ key: 'header.bbb', defaultText: '${0}条已缴费', values: [num] }) : ""
+ *
+ * 场景二：普通引号字符串
+ *   表达式源码: getConfig("idEmp121_2", "首席医生")
+ *   映射条目:   { text: "首席医生", key: "xxx" }
+ *   → 替换结果: getConfig("idEmp121_2", intl({ key: 'xxx', defaultText: '首席医生' }))
+ *
  * @param {string} expr - 原始表达式源码
  * @param {Map} textToEntry - 文本到映射条目的映射
  * @param {string} funcName - 翻译函数名
@@ -40,18 +53,46 @@ function translateExpressionChinese(expr, textToEntry, funcName) {
   for (const [text, entry] of textToEntry) {
     if (!CHINESE_RE.test(text)) continue;
     if (!entry.key || entry.key.trim() === '') continue;
-    // 跳过带占位符的模板文本（非简单字符串）
+
+    // —— 场景一：嵌套模板字符串 ——
+    // 条目含占位符且有 templateExpressions 信息，说明是从嵌套模板中提取的
+    if (text.includes('${') && entry.templateExpressions && entry.templateExpressions.length > 0) {
+      // 1. 将映射中的占位符 ${0}, ${1} ... 还原为实际变量名
+      //    "${0}条已缴费" + ["num"] → "${num}条已缴费"
+      let templateSource = text;
+      for (let i = 0; i < entry.templateExpressions.length; i++) {
+        // 使用 split/join 避免 String.replace 中 $ 的特殊含义
+        templateSource = templateSource
+          .split(`\${${i}}`)
+          .join(`\${${entry.templateExpressions[i]}}`);
+      }
+
+      // 2. 加上反引号，还原为完整的模板字符串源码形式
+      //    "${num}条已缴费" → `${num}条已缴费`
+      const backtickSource = '`' + templateSource + '`';
+
+      // 3. 在表达式中查找并替换为 intl() 调用
+      if (result.includes(backtickSource)) {
+        const call = buildTranslateCall(
+          entry.key, text, funcName, entry.templateExpressions
+        );
+        result = result.replaceAll(backtickSource, call);
+      }
+      continue;
+    }
+
+    // 含占位符但缺少 templateExpressions 信息的条目无法还原，跳过
     if (text.includes('${')) continue;
 
+    // —— 场景二：普通引号字符串 ——
     const call = buildTranslateCall(entry.key, text, funcName);
 
-    // 替换双引号包裹的字符串
+    // 尝试匹配双引号 "中文" 或单引号 '中文'
     const doubleQuoted = `"${text}"`;
     if (result.includes(doubleQuoted)) {
       result = result.replaceAll(doubleQuoted, call);
       continue;
     }
-    // 替换单引号包裹的字符串
     const singleQuoted = `'${text}'`;
     if (result.includes(singleQuoted)) {
       result = result.replaceAll(singleQuoted, call);
