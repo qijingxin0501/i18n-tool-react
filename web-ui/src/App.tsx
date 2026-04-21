@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Virtuoso } from 'react-virtuoso';
 import type { RawMapping } from './types';
@@ -13,6 +13,19 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUnfilledOnly, setShowUnfilledOnly] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // 管理 GroupRow 展开/收起状态，避免虚拟列表销毁组件后状态丢失
+  const expandedGroupsRef = useRef<Set<string>>(new Set());
+  const [, forceUpdate] = useState(0);
+  const toggleExpand = useCallback((groupId: string) => {
+    const s = expandedGroupsRef.current;
+    if (s.has(groupId)) {
+      s.delete(groupId);
+    } else {
+      s.add(groupId);
+    }
+    forceUpdate((n) => n + 1);
+  }, []);
 
   const {
     translations,
@@ -206,6 +219,8 @@ function App() {
                       translations={translations}
                       onGroupChange={handleGroupChange}
                       onItemChange={handleItemChange}
+                      expanded={expandedGroupsRef.current.has(group.zh)}
+                      onToggleExpand={() => toggleExpand(group.zh)}
                     />
                   </div>
                 )}

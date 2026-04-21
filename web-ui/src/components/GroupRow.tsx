@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   FileText,
   ChevronDown,
@@ -13,6 +13,8 @@ interface GroupRowProps {
   translations: Record<string, string>;
   onGroupChange: (items: AggregatedItem[], value: string) => void;
   onItemChange: (id: string, value: string) => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
 }
 
 /** 词条行组件（外层批量区 + 内层独立区） */
@@ -21,8 +23,9 @@ const GroupRow: React.FC<GroupRowProps> = ({
   translations,
   onGroupChange,
   onItemChange,
+  expanded,
+  onToggleExpand,
 }) => {
-  const [expanded, setExpanded] = useState(false);
 
   // 计算当前组的 key 状态
   const groupKeys = group.items.map((item) => translations[item.id] || '');
@@ -61,7 +64,7 @@ const GroupRow: React.FC<GroupRowProps> = ({
           <div>
             <button
               type="button"
-              onClick={() => setExpanded(!expanded)}
+              onClick={onToggleExpand}
               className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-indigo-600 transition-colors"
             >
               <FileText className="w-3 h-3" />
